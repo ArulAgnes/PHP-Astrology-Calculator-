@@ -1,10 +1,3 @@
-# PHP-Astrology-Calculator-
-This project allows you to input your Date of Birth, and it reveals your lucky number along with its celestial representation, like Jupiter — symbolizing creativity, knowledge, and growth.
----
-Here’s the updated **README.md** content with the details you provided:  
-
----
-
 # PHP-Astrology-Calculator  
 
 This project is a **Numerology Calculator** that combines technology with the fascinating world of astrology and numerology. By inputting your **Date of Birth**, it reveals your **lucky number** and its celestial representation, such as **Jupiter** — a planet associated with creativity, knowledge, and growth.  
@@ -17,11 +10,13 @@ This project is a **Numerology Calculator** that combines technology with the fa
 - **Dynamic Backend**: Powered by **PHP** for fast and accurate calculations.  
 
 ## Screenshots  
-### Home Page Interface  
-![Screenshot 84](https://github.com/ArulAgnes/PHP-Astrology-Calculator-/tree/main/Screenshot/Screenshot%20(84).png)  
 
-### Results Page with Lucky Number  
-![Screenshot 85](https://github.com/ArulAgnes/PHP-Astrology-Calculator-/tree/main/Screenshot/Screenshot%20(85).png)  
+### Home Page Interface
+<img alt="Home Page Interface" src="https://raw.githubusercontent.com/ArulAgnes/PHP-Astrology-Calculator-/main/Screenshot/Screenshot%20(84).png" />
+
+### Results Page with Lucky Number
+<img alt="Results Page" src="https://raw.githubusercontent.com/ArulAgnes/PHP-Astrology-Calculator-/main/Screenshot/Screenshot%20(85).png" />
+
 
 ## How It Works  
 1. Enter your **Date of Birth** in the input field.  
