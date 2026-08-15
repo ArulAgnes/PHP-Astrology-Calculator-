@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PHP Astrology Calculator — Interactive Demo</title>
+  <meta name="description" content="An interactive demo of the PHP Astrology Calculator — Three.js planetarium, theme toggle, particle footer, copy-to-clipboard and full prefers-reduced-motion support." />
+  <style>
+    /* ============================================================
+       Design tokens (dark by default, light via [data-theme=light])
+       ============================================================ */
+    :root {
+      --cosmos-deep:    #000010;
+      --cosmos-mid:     #0b0628;
+      --cosmos-violet:  #1b1147;
+      --accent-cyan:    #7ad7ff;
+      --accent-magenta: #ff6bd6;
+      --accent-violet:  #c89bff;
+      --accent-amber:   #ffb86b;
+      --text-primary:   #ffffff;
+      --text-soft:      #cfd8ff;
+      --card-bg:        rgba(255, 255, 255, 0.05);
+      --card-border:    rgba(255, 255, 255, 0.18);
+      --transition:     background-color 0.5s ease, color 0.5s ease;
+    }
+    :root[data-theme="light"] {
+      --cosmos-deep:   #f6f1ff;
+      --cosmos-mid:    #ece4ff;
+      --cosmos-violet: #ffffff;
+      --accent-cyan:    #1f6fb5;
+      --accent-magenta: #b1358f;
+      --accent-violet:  #6b3aa3;
+      --accent-amber:   #b35400;
+      --text-primary:   #1b1147;
+      --text-soft:      #4a3a78;
+      --card-bg:        rgba(27, 17, 71, 0.06);
+      --card-border:    rgba(27, 17, 71, 0.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--cosmos-deep); color: var(--text-primary); transition: var(--transition); font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; }
+    a { color: var(--accent-cyan); text-decoration: none; }
+    a:hover { color: var(--accent-magenta); }
+
+    /* ============================================================
+       Animated cosmic background
+       ============================================================ */
+    .bg-canvas {
+      position: fixed; inset: 0; z-index: -2;
+      background:
+        radial-gradient(ellipse at top, var(--cosmos-mid) 0%, var(--cosmos-deep) 60%, #000 100%);
+    }
+    #particles { position: fixed; inset: 0; z-index: -1; }
+
+    /* ============================================================
+       Layout
+       ============================================================ */
+    header {
+      text-align: center; padding: 4rem 1rem 2rem;
+      background: linear-gradient(180deg, transparent, var(--cosmos-mid));
+    }
+    .gradient-title {
+      font-size: clamp(2rem, 6vw, 4.2rem);
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet), var(--accent-magenta), var(--accent-amber));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      margin: 0;
+    }
+    .tagline {
+      margin-top: 0.5rem; color: var(--text-soft);
+      font-size: clamp(1rem, 2.4vw, 1.4rem);
+      min-height: 1.6em;
+    }
+    .cursor::after {
+      content: '|'; animation: blink 1s steps(1) infinite;
+      color: var(--accent-amber);
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1rem; }
+    section { margin: 3rem auto; }
+
+    /* ============================================================
+       Glass card
+       ============================================================ */
+    .glass {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: 18px;
+      padding: 2rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      transition: var(--transition), transform 0.4s ease;
+    }
+    .glass:hover { transform: translateY(-4px); }
+
+    .grid { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+    /* ============================================================
+       Three.js planetarium
+       ============================================================ */
+    #planetarium {
+      width: 100%; height: 460px; display: block; border-radius: 18px;
+      background: radial-gradient(circle at center, #1b1147 0%, #000 100%);
+    }
+
+    /* ============================================================
+       Buttons / theme toggle
+       ============================================================ */
+    .btn {
+      background: var(--accent-amber); color: #1b1147; font-weight: 700;
+      border: 0; border-radius: 10px; padding: 0.7rem 1.4rem;
+      cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 14px rgba(255, 184, 107, 0.4);
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 184, 107, 0.6); }
+    .btn-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: center; }
+
+    .theme-toggle {
+      position: fixed; top: 1rem; right: 1rem; z-index: 10;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      width: 48px; height: 48px; border-radius: 50%;
+      cursor: pointer; font-size: 1.4rem;
+      transition: var(--transition), transform 0.3s ease;
+    }
+    .theme-toggle:hover { transform: scale(1.1) rotate(15deg); }
+
+    /* ============================================================
+       Code blocks with copy-to-clipboard
+       ============================================================ */
+    pre {
+      position: relative; background: rgba(0, 0, 0, 0.45); color: #e7eaff;
+      padding: 1rem 1rem 1rem 1rem; border-radius: 12px;
+      overflow: auto; font-family: 'Fira Code', Consolas, monospace; font-size: 0.9rem;
+      border: 1px solid var(--card-border);
+    }
+    pre[data-lang]::before {
+      content: attr(data-lang); position: absolute; top: 6px; right: 10px;
+      font-size: 0.7rem; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 1px;
+    }
+    .copy-btn {
+      position: absolute; top: 8px; right: 60px;
+      background: var(--accent-cyan); color: #000; border: 0; border-radius: 6px;
+      padding: 4px 10px; font-size: 0.75rem; cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .copy-btn:hover { background: var(--accent-magenta); color: #fff; }
+
+    /* ============================================================
+       Animated counters
+       ============================================================ */
+    .counter { font-size: 2.4rem; font-weight: 800; color: var(--accent-amber); }
+    .progress {
+      width: 100%; height: 14px; background: var(--cosmos-violet);
+      border-radius: 7px; overflow: hidden; border: 1px solid var(--card-border);
+    }
+    .progress-bar {
+      height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
+      border-radius: 7px;
+      transition: width 1.4s cubic-bezier(0.65, 0, 0.35, 1);
+    }
+
+    /* ============================================================
+       Social badges with glow
+       ============================================================ */
+    .badges a img { transition: transform 0.3s ease, filter 0.3s ease; }
+    .badges a:hover img { transform: scale(1.08); filter: drop-shadow(0 0 8px var(--accent-magenta)); }
+
+    /* ============================================================
+       Lazy-loaded demo media
+       ============================================================ */
+    .demo-media { max-width: 100%; border-radius: 12px; border: 1px solid var(--card-border); }
+
+    /* ============================================================
+       Footer
+       ============================================================ */
+    footer {
+      text-align: center; padding: 3rem 1rem; color: var(--text-soft);
+      border-top: 1px solid var(--card-border); position: relative;
+    }
+
+    /* ============================================================
+       prefers-reduced-motion guard — disables every animation/transition
+       ============================================================ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+      .cursor::after { animation: none; }
+      #planetarium { display: none; }
+      .planetarium-fallback { display: block !important; }
+    }
+    .planetarium-fallback { display: none; }
+
+    /* ============================================================
+       Responsive
+       ============================================================ */
+    @media (max-width: 768px) {
+      header { padding: 2.5rem 0.5rem 1rem; }
+      .glass { padding: 1.4rem; }
+      #planetarium { height: 320px; }
+      .theme-toggle { top: 0.5rem; right: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <canvas class="bg-canvas" aria-hidden="true"></canvas>
+  <canvas id="particles" aria-hidden="true"></canvas>
+
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark/light theme" title="Toggle theme">🌗</button>
+
+  <header>
+    <h1 class="gradient-title">✨ PHP Astrology Calculator ✨</h1>
+    <p class="tagline"><span id="typewriter" class="cursor"></span></p>
+    <div class="btn-row" style="margin-top:1rem">
+      <a class="btn" href="https://github.com/ArulAgnes/PHP-Astrology-Calculator-">⭐ View on GitHub</a>
+      <a class="btn" href="../Astrology.php" style="background:var(--accent-magenta);color:#fff">🚀 Launch the PHP App</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ============================================================
+         Feature matrix with animated counters & progress bars
+         ============================================================ -->
+    <section class="glass">
+      <h2>📊 Animated Stats &amp; Progress</h2>
+      <div class="grid">
+        <div>
+          <div class="counter" data-target="1" data-suffix=" file">0</div>
+          <p>Single-file PHP app</p>
+          <div class="progress"><div class="progress-bar" data-fill="100"></div></div>
+        </div>
+        <div>
+          <div class="counter" data-target="9" data-suffix=" planets">0</div>
+          <p>Celestial mappings</p>
+          <div class="progress"><div class="progress-bar" data-fill="90"></div></div>
+        </div>
+        <div>
+          <div class="counter" data-target="0" data-suffix=" deps">0</div>
+          <p>Runtime dependencies</p>
+          <div class="progress"><div class="progress-bar" data-fill="100"></div></div>
+        </div>
+        <div>
+          <div class="counter" data-target="100" data-suffix="%">0</div>
+          <p>Open source</p>
+          <div class="progress"><div class="progress-bar" data-fill="100"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Three.js planetarium (3D showcase)
+         ============================================================ -->
+    <section class="glass">
+      <h2>🪐 Interactive 3D Planetarium</h2>
+      <p style="color:var(--text-soft)">A live Three.js scene: a sun, nine orbiting planets, each rotating on its own axis. Drag to look around.</p>
+      <canvas id="planetarium" aria-label="3D planetarium scene"></canvas>
+      <div class="planetarium-fallback" style="text-align:center;padding:2rem;color:var(--text-soft)">
+        🌙 The 3D planetarium is paused because you prefer reduced motion.<br>
+        Static fallback: imagine nine planets orbiting a glowing sun ✨
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Animated code blocks with copy-to-clipboard
+         ============================================================ -->
+    <section class="glass">
+      <h2>🧮 The Numerology Engine</h2>
+      <p style="color:var(--text-soft)">Click <strong>Copy</strong> on any block. A typewriter reveal also plays on first paint.</p>
+
+      <h3 style="margin-top:1.5rem">PHP — Core reduction</h3>
+      <pre data-lang="php"><button class="copy-btn" data-copy>Copy</button><code id="code-php">// Reduce any date of birth to a single digit
+$dob = str_replace('-', '', $_POST['d1']);
+$sum = array_sum(str_split($dob));
+while ($sum > 9) {
+    $sum = array_sum(str_split((string)$sum));
+}
+echo "Your Lucky Number is: $sum";</code></pre>
+
+      <h3 style="margin-top:1.5rem">JavaScript — Theme toggle</h3>
+      <pre data-lang="js"><button class="copy-btn" data-copy>Copy</button><code id="code-js">document.getElementById('theme-toggle')
+  .addEventListener('click', () => {
+    const r = document.documentElement;
+    r.dataset.theme = r.dataset.theme === 'light' ? '' : 'light';
+  });</code></pre>
+    </section>
+
+    <!-- ============================================================
+         Lazy-loaded demo media
+         ============================================================ -->
+    <section class="glass">
+      <h2>🎞️ Lazy-loaded Demo Media</h2>
+      <p style="color:var(--text-soft)">A poster image loads instantly; the looping GIF only downloads when visible.</p>
+      <img
+        class="demo-media"
+        src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 450'><rect width='800' height='450' fill='%231b1147'/><text x='400' y='225' text-anchor='middle' fill='%237ad7ff' font-size='24' font-family='sans-serif'>Loading demo GIF…</text></svg>"
+        data-src="./demo.gif"
+        alt="Animated demo of the calculator"
+        loading="lazy"
+        decoding="async"
+        width="800"
+        id="demo-img" />
+      <div class="btn-row" style="margin-top:1rem">
+        <button class="btn" id="play-pause" aria-controls="demo-img">⏯ Play / Pause</button>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Animated social badges
+         ============================================================ -->
+    <section class="glass badges">
+      <h2>🏆 Animated Badges</h2>
+      <div class="btn-row">
+        <a href="https://github.com/ArulAgnes/PHP-Astrology-Calculator-/stargazers"><img src="https://img.shields.io/github/stars/ArulAgnes/PHP-Astrology-Calculator-?style=for-the-badge&color=ff6bd6&labelColor=1b1147" alt="Stars"/></a>
+        <a href="https://github.com/ArulAgnes/PHP-Astrology-Calculator-/network/members"><img src="https://img.shields.io/github/forks/ArulAgnes/PHP-Astrology-Calculator-?style=for-the-badge&color=7ad7ff&labelColor=1b1147" alt="Forks"/></a>
+        <a href="https://github.com/ArulAgnes/PHP-Astrology-Calculator-/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-ffb86b?style=for-the-badge&labelColor=1b1147" alt="License"/></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 ArulAgnes · Apache 2.0 · The universe is your API.</p>
+  </footer>
+
+  <!-- ============================================================
+       Scripts — vanilla + Three.js (CDN)
+       ============================================================ -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ---------------- 1. Typewriter tagline ---------------- */
+    const tw = document.getElementById('typewriter');
+    const lines = [
+      'Numerology + Astrology = Destiny',
+      'Powered by PHP & Pure CSS',
+      'Open Source ✨ Apache 2.0',
+      'One Date of Birth ❤️ Infinite Insights',
+    ];
+    if (reduced) { tw.textContent = lines[0]; tw.classList.remove('cursor'); }
+    else {
+      let li = 0, ci = 0, deleting = false;
+      const tick = () => {
+        const cur = lines[li];
+        tw.textContent = cur.slice(0, ci);
+        if (!deleting && ci < cur.length) { ci++; setTimeout(tick, 80); }
+        else if (deleting && ci > 0)     { ci--; setTimeout(tick, 35); }
+        else if (!deleting && ci === cur.length) { deleting = true; setTimeout(tick, 1400); }
+        else { deleting = false; li = (li + 1) % lines.length; setTimeout(tick, 250); }
+      };
+      tick();
+    }
+
+    /* ---------------- 2. Theme toggle ---------------- */
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const r = document.documentElement;
+      r.dataset.theme = r.dataset.theme === 'light' ? '' : 'light';
+    });
+
+    /* ---------------- 3. Animated counters ---------------- */
+    const counters = document.querySelectorAll('.counter');
+    const animateCounter = (el) => {
+      const target = +el.dataset.target;
+      const suffix = el.dataset.suffix || '';
+      const dur = 1400;
+      const start = performance.now();
+      const step = (now) => {
+        const p = Math.min(1, (now - start) / dur);
+        el.textContent = Math.round(target * (reduced ? 1 : p)) + suffix;
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { animateCounter(e.target); io.unobserve(e.target); } });
+    }, { threshold: 0.5 });
+    counters.forEach((c) => io.observe(c));
+
+    /* ---------------- 4. Progress bars ---------------- */
+    const bars = document.querySelectorAll('.progress-bar');
+    const io2 = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.style.width = (reduced ? e.target.dataset.fill : 0) + '%';
+          requestAnimationFrame(() => { e.target.style.width = e.target.dataset.fill + '%'; });
+          io2.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    bars.forEach((b) => io2.observe(b));
+
+    /* ---------------- 5. Copy-to-clipboard ---------------- */
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const code = btn.parentElement.querySelector('code').innerText;
+        try {
+          await navigator.clipboard.writeText(code);
+          btn.textContent = '✓ Copied';
+          setTimeout(() => (btn.textContent = 'Copy'), 1500);
+        } catch { btn.textContent = '✗ Failed'; }
+      });
+    });
+
+    /* ---------------- 6. Lazy-load GIF ---------------- */
+    const img = document.getElementById('demo-img');
+    const io3 = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting && img.dataset.src) { img.src = img.dataset.src; io3.unobserve(img); }
+      });
+    });
+    io3.observe(img);
+    document.getElementById('play-pause').addEventListener('click', () => {
+      // For GIFs we just toggle visibility — GIFs cannot be paused natively.
+      img.style.opacity = img.style.opacity === '0' ? '1' : '0';
+    });
+
+    /* ---------------- 7. Particle footer/background ---------------- */
+    const pc = document.getElementById('particles');
+    const ctx = pc.getContext('2d');
+    const resize = () => { pc.width = innerWidth; pc.height = innerHeight; };
+    resize(); addEventListener('resize', resize);
+    if (!reduced) {
+      const N = 90;
+      const dots = Array.from({ length: N }, () => ({
+        x: Math.random() * pc.width, y: Math.random() * pc.height,
+        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+        r: Math.random() * 2 + 0.5,
+      }));
+      const loop = () => {
+        ctx.clearRect(0, 0, pc.width, pc.height);
+        ctx.fillStyle = '#7ad7ff';
+        dots.forEach((d) => {
+          d.x += d.vx; d.y += d.vy;
+          if (d.x < 0 || d.x > pc.width)  d.vx *= -1;
+          if (d.y < 0 || d.y > pc.height) d.vy *= -1;
+          ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+        });
+        requestAnimationFrame(loop);
+      };
+      loop();
+    }
+
+    /* ---------------- 8. Three.js 3D planetarium ---------------- */
+    if (!reduced) {
+      const canvas = document.getElementById('planetarium');
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+
+      // Sun
+      const sun = new THREE.Mesh(
+        new THREE.SphereGeometry(2, 32, 32),
+        new THREE.MeshBasicMaterial({ color: 0xffd24a })
+      );
+      scene.add(sun);
+
+      // Nine orbiting planets with varied colors & speeds
+      const planetColors = [0x7ad7ff, 0xc89bff, 0xff6bd6, 0xffb86b, 0xff8a3d, 0x6bff9e, 0xff6b6b, 0x6bd7ff, 0xffd0f0];
+      const planets = planetColors.map((color, i) => {
+        const radius = 4 + i * 1.2;
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.6 + i * 0.1, 24, 24),
+          new THREE.MeshBasicMaterial({ color })
+        );
+        scene.add(mesh);
+        return { mesh, radius, speed: 0.005 + Math.random() * 0.01, angle: Math.random() * Math.PI * 2, axis: 0.02 };
+      });
+
+      camera.position.z = 28;
+      const animate = () => {
+        requestAnimationFrame(animate);
+        sun.rotation.y += 0.005;
+        planets.forEach((p) => {
+          p.angle += p.speed;
+          p.mesh.position.set(Math.cos(p.angle) * p.radius, Math.sin(p.angle) * 0.3, Math.sin(p.angle) * p.radius);
+          p.mesh.rotation.y += p.axis;
+        });
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      // Drag-to-look-around
+      let dragging = false, lx = 0, ly = 0;
+      canvas.addEventListener('pointerdown', (e) => { dragging = true; lx = e.clientX; ly = e.clientY; });
+      addEventListener('pointerup',   () => { dragging = false; });
+      addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const dx = (e.clientX - lx) / innerWidth;
+        const dy = (e.clientY - ly) / innerHeight;
+        scene.rotation.y += dx * 2;
+        scene.rotation.x += dy * 2;
+        lx = e.clientX; ly = e.clientY;
+      });
+      addEventListener('resize', () => renderer.setSize(canvas.clientWidth, canvas.clientHeight, false));
+    }
+  </script>
+</body>
+</html>
